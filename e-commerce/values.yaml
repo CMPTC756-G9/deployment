@@ -1,0 +1,28 @@
+# Default values for e-commerce.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+postgres:
+  image: us-central1-docker.pkg.dev/cmptc756-g9/cmptc756/postgres
+  tag: 15.2
+
+users:
+  replicas: 2
+  image: us-central1-docker.pkg.dev/cmptc756-g9/cmptc756/users
+  tag: 0.3.1
+
+financial:
+  replicas: 2
+  image: us-central1-docker.pkg.dev/cmptc756-g9/cmptc756/financial
+  tag: 0.1.1
+
+order:
+  replicas: 2
+  image: us-central1-docker.pkg.dev/cmptc756-g9/cmptc756/order
+  tag: 0.3.1
+
+products:
+  replicas: 2
+  image: us-central1-docker.pkg.dev/cmptc756-g9/cmptc756/products
+  tag: 0.1.1
+  

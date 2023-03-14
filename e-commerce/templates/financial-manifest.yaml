@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-financial-db
+spec:
+  selector:
+    app: {{ .Release.Name }}-financial-db
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-financial
+spec:
+  selector:
+    app: {{ .Release.Name }}-financial
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-financial
+  labels:
+    app: {{ .Release.Name }}-financial
+spec:
+  replicas: {{ .Values.financial.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-financial
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-financial
+    spec:
+      containers:
+        - name: app
+          image: {{ .Values.financial.image }}:{{ .Values.financial.tag }}
+          ports:
+          - containerPort: 8000
+            protocol: TCP
+          command: 
+            - python
+          args:
+            - manage.py
+            - runserver 
+            - 0.0.0.0:8000
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          env:
+            - name: DB_NAME
+              value: "financial"
+            - name: DB_USER
+              value: "financial"
+            - name: DB_PASS
+              value: "123"
+            - name: "ACCOUNTS_ROOT_URL"
+              value: "{{ .Release.Name }}-users.{{ .Release.Namespace }}.svc.cluster.local:8000"
+            - name: "DB_HOST"
+              value: "{{ .Release.Name }}-financial-db-0.{{ .Release.Name }}-financial-db.{{ .Release.Namespace }}.svc.cluster.local"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-financial-db
+  labels:
+    app: {{ .Release.Name }}-financial-db
+spec:
+  serviceName: {{ .Release.Name }}-financial-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}-financial-db
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}-financial-db
+    spec:
+      containers:
+        - name: db
+          image: {{ .Values.postgres.image }}:{{ .Values.postgres.tag }}
+          ports:
+          - containerPort: 5432
+            protocol: TCP
+          resources:
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          env:
+            - name: POSTGRES_DB
+              value: "financial"
+            - name: POSTGRES_USER
+              value: "financial"
+            - name: POSTGRES_PASSWORD
+              value: "123"
+            - name: "PGDATA"
+              value: /var/lib/postgresql/data/db
+          volumeMounts:
+          - name: data
+            mountPath: /var/lib/postgresql/data/
+
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "standard-rwo"
+      resources:
+        requests:
+          storage: 1Gi
